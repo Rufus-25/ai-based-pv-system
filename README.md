@@ -146,7 +146,7 @@ BLYNK_AUTH_TOKEN = "your_blynk_token"
 2. **Start Python AI Server**:
 
    ```bash
-   cd Python_Server/
+   cd Server/
    python server.py
    ```
 
@@ -190,7 +190,7 @@ BLYNK_AUTH_TOKEN = "your_blynk_token"
 | Fault Detection Precision | >0.90 | [Results] |
 | System Uptime | >99% | [Results]% |
 
-## 🔧 Troubleshooting
+<!-- ## 🔧 Troubleshooting
 
 ### Common Issues
 
@@ -208,7 +208,7 @@ BLYNK_AUTH_TOKEN = "your_blynk_token"
 
 4. **Servo motor not moving**
    - Ensure adequate power supply (5-6V)
-   - Check PWM signal on correct pin
+   - Check PWM signal on correct pin -->
 
 ### Debug Mode
 
@@ -220,7 +220,7 @@ DEBUG = True
 LOG_LEVEL = "DEBUG"
 ```
 
-## 📈 Extending the Project
+<!-- ## 📈 Extending the Project
 
 ### Adding New Sensors
 
@@ -238,7 +238,7 @@ LOG_LEVEL = "DEBUG"
 
 1. Modify Blynk widget layout
 2. Add new data streams to MQTT topics
-3. Create custom visualizations in web dashboard
+3. Create custom visualizations in web dashboard -->
 
 ## 🤝 Contributing
 
@@ -263,8 +263,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ai-pv-tracker/issues)
-- **Email**: <your.email@futa.edu.ng>
+- **Issues**: [GitHub Issues](https://github.com/Rufus-25/ai-based-pv-system/issues)
+- **Email**: <taiworceee2019@futa.edu.ng>
 - **Documentation**: [Full Documentation](Documentation/)
 
 ## 🎓 Academic Reference
