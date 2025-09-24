@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ai-server:
+    build: ./server
+    ports:
+      - "1883:1883"  # MQTT
+      - "5000:5000"  # HTTP API
+    volumes:
+      - ./server/models:/app/models
+      - ./server/logs:/app/logs
+    environment:
+      - MQTT_BROKER=localhost
+      - DATABASE_URL=sqlite:///app/data/pv_tracker.db
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped

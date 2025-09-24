@@ -1,0 +1,33 @@
+{
+    "sensor_data": {
+        "description": "Data from ESP32 to Python Server",
+        "format": {
+            "timestamp": "float",
+            "device_id": "string",
+            "voltage": "float",
+            "current": "float",
+            "power": "float",
+            "temperature": "float",
+            "humidity": "float",
+            "servo_angle": "integer"
+        }
+    },
+    "ai_command": {
+        "description": "Commands from Python Server to ESP32",
+        "types": {
+            "set_angle": {
+                "angle": "integer",
+                "reason": "string"
+            },
+            "power_prediction": {
+                "predictions": "array",
+                "confidence": "float"
+            },
+            "fault_alert": {
+                "fault_type": "string",
+                "severity": "string",
+                "recommendation": "string"
+            }
+        }
+    }
+}

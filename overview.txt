@@ -1,0 +1,18 @@
+Architecture Overview
+
+┌─────────────────┐    WiFi/MQTT    ┌──────────────────┐
+│   ESP32 Device  │ ◄─────────────► │  Python Server   │
+│ (MicroPython)   │                 │ (RPi/Cloud/PC)   │
+├─────────────────┤                 ├──────────────────┤
+│ Sensors Reading │                 │ AI Model Training│
+│ Motor Control   │                 │ Power Forecasting│
+│ Basic Logic     │                 │ Fault Detection  │
+│ Blynk Comm      │                 │ Data Storage     │
+└─────────────────┘                 └──────────────────┘
+      │                                      │
+      │ USB/Blynk                            │ API Calls
+      ▼                                      ▼
+┌─────────────────┐                 ┌──────────────────┐
+│ Blynk Dashboard │                 │ External APIs    │
+│ Real-time Display│                 │ (NASA, Weather)  │
+└─────────────────┘                 └──────────────────┘
