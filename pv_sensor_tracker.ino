@@ -3,7 +3,6 @@
 #define BLYNK_TEMPLATE_NAME "AI Based PV Tracker"
 #define BLYNK_AUTH_TOKEN    "nSy-ERVR0S3TiyRfCni6Ls1AawSie16s"
 
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <BlynkSimpleEsp32.h>
@@ -17,13 +16,12 @@
 char ssid[] = "Blessed";
 char pass[] = "self.wifii";
 
-
 // ---------- Google Sheets ----------
-String GOOGLE_SCRIPT_ID = "AKfycbyTqApDZeDbCJouGWEE0G5KcotyoMO7vjyHDGXdDGJF9jWbKqw4Auzf4HG2E0mh9XYVQQ"; // deployed Apps Script WebApp ID
+String GOOGLE_SCRIPT_ID = "AKfycbyTqApDZeDbCJouGWEE0G5KcotyoMO7vjyHDGXdDGJF9jWbKqw4Auzf4HG2E0mh9XYVQQ";
 
 // ---------- Pins ----------
-const int LDR1_PIN = 34;
-const int LDR2_PIN = 35;
+const int LDR1_PIN = 35;
+const int LDR2_PIN = 34;
 const int SERVO_PIN = 18;
 #define DHTPIN 4
 #define DHTTYPE DHT11
@@ -45,15 +43,17 @@ const int maxAngle = 180;
 float panelVoltage = 0, panelCurrent = 0, panelPower = 0;
 float temperature = 0, humidity = 0;
 
-// ---------- NTP for Date/Time ----------
+// ---------- NTP ----------
 const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 0;
+const long  gmtOffset_sec = 3600;   // +1 hr for Nigeria
 const int   daylightOffset_sec = 0;
 
 // ---------- Timers ----------
 BlynkTimer timer;
 
-// ========== FUNCTION: Get Date & Hour ==========
+// =================================================
+// FUNCTIONS
+// =================================================
 String getDateHour() {
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
@@ -66,14 +66,13 @@ String getDateHour() {
   return String(dateStr) + "," + String(hourStr);
 }
 
-// ========== FUNCTION: Upload to Google Sheets ==========
 void uploadToGoogleSheets(String dateHour) {
   if(WiFi.status()== WL_CONNECTED){
     HTTPClient http;
     String url = "https://script.google.com/macros/s/" + GOOGLE_SCRIPT_ID + "/exec?";
     url += "date=" + dateHour.substring(0,10);
     url += "&hour=" + dateHour.substring(11);
-    url += "&angle=" + String(balancedAngle);
+    url += "&angle=" + String(currentAngle);
     url += "&voltage=" + String(panelVoltage,2);
     url += "&temperature=" + String(temperature,1);
     url += "&humidity=" + String(humidity,1);
@@ -82,51 +81,27 @@ void uploadToGoogleSheets(String dateHour) {
 
     http.begin(url.c_str());
     int httpCode = http.GET();
-    if(httpCode > 0){
-      Serial.println("Google Sheets Response: " + http.getString());
-    }
     http.end();
   }
 }
 
-// ========== FUNCTION: Upload to Blynk ==========
 void uploadToBlynk() {
-  Blynk.virtualWrite(V5, balancedAngle);       // Servo angle
-  Blynk.virtualWrite(V0, panelVoltage);        // Voltage
-  Blynk.virtualWrite(V1, panelCurrent);        // Current
-  Blynk.virtualWrite(V2, panelPower);          // Power
-  Blynk.virtualWrite(V3, temperature);         // Temperature
-  Blynk.virtualWrite(V4, humidity);            // Humidity
+  Blynk.virtualWrite(V5, currentAngle);
+  Blynk.virtualWrite(V0, panelVoltage);
+  Blynk.virtualWrite(V1, panelCurrent);
+  Blynk.virtualWrite(V2, panelPower);
+  Blynk.virtualWrite(V3, temperature);
+  Blynk.virtualWrite(V4, humidity);
 }
 
-// ========== FUNCTION: Solar Tracking ==========
-void trackSun() {
-  LDR1_value = analogRead(LDR1_PIN);
-  LDR2_value = analogRead(LDR2_PIN);
-  int diff = LDR1_value - LDR2_value;
-
-  if (abs(diff) <= tolerance) {
-    balancedAngle = currentAngle;
-  } else {
-    if (diff > 0 && currentAngle < maxAngle) {
-      currentAngle += stepSize;
-    } else if (diff < 0 && currentAngle > minAngle) {
-      currentAngle -= stepSize;
-    }
-    panelServo.write(currentAngle);
-  }
-}
-
-// ========== FUNCTION: Measure Sensors ==========
 void measureSensors() {
   panelVoltage = ina219.getBusVoltage_V();
-  panelCurrent = ina219.getCurrent_mA() / 1000.0; // in Amps
-  panelPower   = ina219.getPower_mW() / 1000.0;   // in Watts
+  panelCurrent = ina219.getCurrent_mA() / 1000.0;
+  panelPower   = ina219.getPower_mW() / 1000.0;
   temperature  = dht.readTemperature();
   humidity     = dht.readHumidity();
 }
 
-// ========== TIMED TASK ==========
 void sendData() {
   String dateHour = getDateHour();
   measureSensors();
@@ -134,44 +109,62 @@ void sendData() {
   uploadToBlynk();
 }
 
-// ========== SETUP ==========
+// =================================================
+// SETUP
+// =================================================
 void setup() {
   Serial.begin(115200);
 
-  // Servo
-  panelServo.attach(SERVO_PIN);
-  panelServo.write(currentAngle);
-
-  // DHT
-  dht.begin();
-
-  // INA219
-  if (!ina219.begin()) {
-    Serial.println("Failed to find INA219 chip");
-    while (1) { delay(10); }
-  }
-
-  // WiFi
+  // Start WiFi first
   WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED) {
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 15000UL) {
     delay(500);
-    Serial.print(".");
   }
-  Serial.println("WiFi connected");
+
+  // Now start Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
   // NTP
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
-  // Blynk
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  // Initialize sensors
+  dht.begin();
+  Wire.begin(21,22);
+  ina219.begin();
 
-  // Timer: send every 10 seconds
+  // Attach servo
+  panelServo.attach(SERVO_PIN);
+  panelServo.write(currentAngle);
+
+  // Data upload every 10 sec
   timer.setInterval(10000L, sendData);
 }
 
-// ========== LOOP ==========
+// =================================================
+// LOOP
+// =================================================
 void loop() {
-  trackSun();
+  // --- Continuous real-time tracking ---
+  LDR1_value = analogRead(LDR1_PIN);
+  LDR2_value = analogRead(LDR2_PIN);
+
+  int diff = LDR1_value - LDR2_value;
+
+  if (abs(diff) > tolerance) {
+    if (diff > 0 && currentAngle < maxAngle) {
+      currentAngle += stepSize;
+    } else if (diff < 0 && currentAngle > minAngle) {
+      currentAngle -= stepSize;
+    }
+    panelServo.write(currentAngle);
+    delay(50);  // Smooth motion
+  } else {
+    balancedAngle = currentAngle; // store balanced angle
+    delay(100); // brief pause when balanced
+  }
+
+  // --- Keep Blynk & timers running ---
   Blynk.run();
   timer.run();
 }
