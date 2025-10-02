@@ -32,7 +32,7 @@ DHT dht(DHTPIN, DHTTYPE);
 Servo trackerServo;
 #define SERVO_PIN 18
 
-// ===== INA219 (Current/Voltage Sensor) =====
+// ===== INA219 =====
 Adafruit_INA219 ina219;
 
 // ===== Blynk Virtual Pins =====
@@ -48,8 +48,8 @@ Adafruit_INA219 ina219;
 
 // ===== Time Setup =====
 const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;      // adjust to your timezone
-const int daylightOffset_sec = 3600;  // adjust for DST if needed
+const long gmtOffset_sec = 3600;
+const int daylightOffset_sec = 3600;
 
 // ===== Lookup Table =====
 int lookupTable[12][24] = {
@@ -70,7 +70,7 @@ int lookupTable[12][24] = {
 // ===== Predictive AI Function =====
 int getPredictedAngle(int month, int hour) {
   if (hour < 6 || hour > 18) {
-    return 90;  // Rest at night
+    return 90;
   }
   return lookupTable[month - 1][hour];
 }
@@ -109,38 +109,49 @@ void sendDataToGoogleSheets(String dateStr, int month, int hour, int angle,
 void setup() {
   Serial.begin(115200);
 
-  // Init DHT
+  // Init sensors
   dht.begin();
-
-  // Init INA219
+  
   if (!ina219.begin()) {
     Serial.println("Failed to find INA219 chip");
     while (1) { delay(10); }
   }
 
-  // Init Servo
   trackerServo.attach(SERVO_PIN);
 
-  // ===== WiFi manual connection =====
+  // Connect WiFi with timeout
   WiFi.begin(ssid, pass);
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
+  } else {
+    Serial.println("\nWiFi failed");
+  }
 
-  // ===== Init Blynk without WiFi takeover =====
+  // Start Blynk
   Blynk.config(BLYNK_AUTH_TOKEN);
+  Blynk.connect(10000);
 
-  // ===== Init NTP =====
+  // Wait for NTP sync
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  Serial.print("Waiting for NTP sync");
+  while (time(nullptr) < 100000) {
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println(" NTP synced!");
 }
 
 void loop() {
   Blynk.run();
 
-  // Get current time
+  // Get time
   time_t now = time(nullptr);
   struct tm* p_tm = localtime(&now);
   int year = p_tm->tm_year + 1900;
@@ -151,11 +162,11 @@ void loop() {
   char dateStr[11];
   sprintf(dateStr, "%04d-%02d-%02d", year, month, day);
 
-  // AI predicted angle
+  // AI angle
   int angle = getPredictedAngle(month, hour);
   trackerServo.write(angle);
 
-  // Sensor readings
+  // Read sensors
   float busVoltage = ina219.getBusVoltage_V();
   float current = ina219.getCurrent_mA() / 1000.0;
   float power = busVoltage * current;
@@ -164,21 +175,27 @@ void loop() {
   int ldr1 = analogRead(LDR1_PIN);
   int ldr2 = analogRead(LDR2_PIN);
 
+  // Fix sensor errors
+  if (isnan(temperature)) temperature = 0;
+  if (isnan(humidity)) humidity = 0;
+
   // Send to Google Sheets
   sendDataToGoogleSheets(dateStr, month, hour, angle,
                          busVoltage, current, power,
                          temperature, humidity, ldr1, ldr2);
 
-  // Send to Blynk
-  Blynk.virtualWrite(VPIN_VOLTAGE, busVoltage);
-  Blynk.virtualWrite(VPIN_CURRENT, current);
-  Blynk.virtualWrite(VPIN_POWER, power);
-  Blynk.virtualWrite(VPIN_TEMPERATURE, temperature);
-  Blynk.virtualWrite(VPIN_HUMIDITY, humidity);
-  Blynk.virtualWrite(VPIN_SERVO_ANGLE, angle);
-  Blynk.virtualWrite(VPIN_LDR1, ldr1);
-  Blynk.virtualWrite(VPIN_LDR2, ldr2);
-  Blynk.virtualWrite(VPIN_STATUS, "AI Tracking Active");
+  // Send to Blynk only if connected
+  if (Blynk.connected()) {
+    Blynk.virtualWrite(VPIN_VOLTAGE, busVoltage);
+    Blynk.virtualWrite(VPIN_CURRENT, current);
+    Blynk.virtualWrite(VPIN_POWER, power);
+    Blynk.virtualWrite(VPIN_TEMPERATURE, temperature);
+    Blynk.virtualWrite(VPIN_HUMIDITY, humidity);
+    Blynk.virtualWrite(VPIN_SERVO_ANGLE, angle);
+    Blynk.virtualWrite(VPIN_LDR1, ldr1);
+    Blynk.virtualWrite(VPIN_LDR2, ldr2);
+    Blynk.virtualWrite(VPIN_STATUS, "AI Tracking Active");
+  }
 
-  delay(60000); // 1 min
+  delay(60000);
 }
