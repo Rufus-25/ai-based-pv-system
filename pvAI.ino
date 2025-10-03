@@ -214,7 +214,7 @@ void loop() {
   // Read sensors
   float busVoltage = ina219.getBusVoltage_V();
   float currentVal = ina219.getCurrent_mA() / 1000.0;
-  float power = busVoltage * currentVal;
+  float power = 0.1; // busVoltage * currentVal;
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
   int ldr1 = analogRead(LDR1_PIN);
@@ -225,7 +225,7 @@ void loop() {
   if (isnan(humidity)) humidity = 0;
 
   // Enhanced AI angle prediction
-  int newAngle = getSmartAIAngle(month, hour, ldr1, ldr2, power);
+  int newAngle = getPredictedAngle(month, hour); //getSmartAIAngle(month, hour, ldr1, ldr2, power);
   
   // Move servo only if angle changed
   if (newAngle != currentAngle) {
