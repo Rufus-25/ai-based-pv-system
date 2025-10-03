@@ -49,7 +49,7 @@ Adafruit_INA219 ina219;
 // ===== Time Setup =====
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
-const int daylightOffset_sec = 3600;
+const int daylightOffset_sec = 0;
 
 // ===== Lookup Table =====
 int lookupTable[12][24] = {
@@ -214,7 +214,7 @@ void loop() {
   // Read sensors
   float busVoltage = ina219.getBusVoltage_V();
   float currentVal = ina219.getCurrent_mA() / 1000.0;
-  float power = 0.1; // busVoltage * currentVal;
+  float power = 0.0; // busVoltage * currentVal;
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
   int ldr1 = analogRead(LDR1_PIN);
@@ -223,6 +223,8 @@ void loop() {
   // Fix sensor errors
   if (isnan(temperature)) temperature = 0;
   if (isnan(humidity)) humidity = 0;
+  if (isnan(currentVal)) currentVal = 0;
+  if (isnan(busVoltage)) busVoltage = 0;
 
   // Enhanced AI angle prediction
   int newAngle = getPredictedAngle(month, hour); //getSmartAIAngle(month, hour, ldr1, ldr2, power);
