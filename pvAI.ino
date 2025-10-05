@@ -116,7 +116,7 @@ void sendDataToGoogleSheets(String dateStr, int month, int hour, int angle,
     url += "?date=" + dateStr;
     url += "&month=" + String(month);
     url += "&hour=" + String(hour);
-    url += "&servo=" + String(angle);
+    url += "&angle=" + String(angle);
     url += "&voltage=" + String(voltage, 3);
     url += "&current=" + String(current, 4);
     url += "&power=" + String(power, 4);
@@ -162,10 +162,10 @@ void setup() {
   
   if (!ina219.begin()) {
     Serial.println("Failed to find INA219 chip");
-    while (1) { delay(10); }
   }
 
   trackerServo.attach(SERVO_PIN);
+  trackerServo.write(90);
 
   // Connect WiFi with timeout
   WiFi.begin(ssid, pass);
